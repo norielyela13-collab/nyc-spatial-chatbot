@@ -11,22 +11,17 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS avanzados para modernizar la interfaz (Azul Tech & Sombras Glassmorphism)
+# Estilos CSS avanzados para modernizar la interfaz
 st.markdown("""
     <style>
-    /* Gradient de encabezado */
     .stAppHeader {
         background: rgba(255, 255, 255, 0.8);
     }
-    
-    /* Contenedor principal */
     .block-container {
         padding-top: 2rem;
         padding-bottom: 3rem;
         max-width: 950px;
     }
-
-    /* Estilo para los títulos principales */
     .main-title {
         font-size: 2.3rem;
         font-weight: 800;
@@ -35,14 +30,11 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
         margin-bottom: 0px;
     }
-    
     .sub-title {
         color: #475569;
         font-size: 1.05rem;
         margin-bottom: 25px;
     }
-
-    /* Tarjetas personalizadas de diálogo/modal */
     .stCard {
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
         border: 1px solid #bae6fd;
@@ -54,7 +46,6 @@ st.markdown("""
     .stCard h4 { margin-top: 0; color: #0369a1; font-weight: 700; }
     .stCard p { color: #334155; font-size: 0.92em; margin-bottom: 0; }
 
-    /* Respuesta destacada del asistente con marco azul brillante */
     .assistant-response-box {
         background-color: #f8fafc;
         border-left: 5px solid #2563eb;
@@ -64,8 +55,6 @@ st.markdown("""
         margin-top: 10px;
         color: #0f172a;
     }
-    
-    /* Badge decorativo */
     .badge-postgis {
         background-color: #dbeafe;
         color: #1e40af;
@@ -79,14 +68,32 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-DATABASE_URL = "postgresql://neondb_owner:npg_GDoHi7IUaE8m@ep-bitter-mud-aylkic0b-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require"
+# Recuperar URL desde secrets si está disponible, o usar fallback
+DATABASE_URL = st.secrets.get(
+    "DATABASE_URL", 
+    "postgresql://neondb_owner:npg_GDoHi7IUaE8m@ep-bitter-mud-aylkic0b-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require"
+)
 
-# System Prompt para delimitar el alcance del agente
-PREFIX_PROMPT = """Eres un asistente especializado única y exclusivamente en la base de datos geoespacial de la ciudad de Nueva York (PostGIS).
+# System Prompt enfocado para el Agente SQL
+PREFIX_PROMPT = """Eres un asistente analítico especializado en la base de datos geoespacial de la ciudad de Nueva York (PostGIS).
+Responde a las preguntas del usuario generando consultas SQL geoespaciales eficientes en PostGIS y explicando brevemente los resultados en español."""
 
-Si la pregunta del usuario no está relacionada con la base de datos de Nueva York, análisis espacial, barrios, datos demográficos, bloques censales o criminalidad de NYC, responde amablemente indicando:
-"Este es un asistente especializado exclusivamente en información y análisis geoespacial de la ciudad de Nueva York (PostGIS). Por favor, realiza una consulta relacionada con barrios, geografía o datos espaciales de NYC."
-"""
+# Optimización: Caché de la conexión a la base de datos
+@st.cache_resource
+def get_db_connection(url):
+    return SQLDatabase.from_uri(url)
+
+# Filtro previo (Guardrail): Valida palabras clave o contexto geoespacial antes de llamar al agente SQL
+def es_consulta_valida(prompt: str) -> bool:
+    palabras_clave = [
+        "barrio", "barrios", "nyc", "nueva york", "new york", "distrito", "crimen", 
+        "homicidio", "homicidios", "calle", "calles", "polígono", "poligono", 
+        "ubicación", "ubicacion", "postgis", "coordenada", "coordenadas", "borough", 
+        "manhattan", "brooklyn", "queens", "bronx", "staten", "vecindario", 
+        "vecindarios", "espacial", "geografía", "geografia", "mapa", "bloque", "censal"
+    ]
+    prompt_lower = prompt.lower()
+    return any(palabra in prompt_lower for palabra in palabras_clave)
 
 # Diálogo / Modal de bienvenida
 @st.dialog("🏛️ Centro de Control Geoespacial — NYC PostGIS")
@@ -183,28 +190,43 @@ if prompt:
         with st.chat_message("assistant"):
             st.warning(resp)
     else:
-        try:
-            db = SQLDatabase.from_uri(DATABASE_URL)
-            llm = ChatGroq(
-                model="llama-3.3-70b-versatile",
-                groq_api_key=groq_api_key,
-                temperature=0
+        # VALIDACIÓN PREVIA (Evita gasto inútil de API y llamadas a BD)
+        if not es_consulta_valida(prompt):
+            respuesta_fuera_de_tema = (
+                "Este es un asistente especializado exclusivamente en información y análisis geoespacial "
+                "de la ciudad de Nueva York (PostGIS). Por favor, realiza una consulta relacionada con barrios, "
+                "geografía, criminalidad o datos espaciales de NYC."
             )
-            agent_executor = create_sql_agent(
-                llm, 
-                db=db, 
-                agent_type="tool-calling", 
-                prefix=PREFIX_PROMPT,
-                verbose=False
-            )
-            
-            with st.spinner("🔍 Analizando consulta e interactuando con PostGIS..."):
-                result = agent_executor.invoke({"input": prompt})
-                response = result["output"]
-            
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.messages.append({"role": "assistant", "content": respuesta_fuera_de_tema})
             with st.chat_message("assistant"):
-                st.markdown(f'<div class="assistant-response-box">🔹 <b>Resultado del Análisis:</b><br><br>{response}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="assistant-response-box">{respuesta_fuera_de_tema}</div>', unsafe_allow_html=True)
+        else:
+            try:
+                # Recuperar o reutilizar conexión en caché
+                db = get_db_connection(DATABASE_URL)
                 
-        except Exception as e:
-            st.error(f"❌ Error al procesar la consulta espacial: {e}")
+                # Modelo actualizado a Llama 3.3 Versatile
+                llm = ChatGroq(
+                    model="llama-3.3-70b-versatile",
+                    groq_api_key=groq_api_key,
+                    temperature=0
+                )
+                
+                agent_executor = create_sql_agent(
+                    llm, 
+                    db=db, 
+                    agent_type="tool-calling", 
+                    prefix=PREFIX_PROMPT,
+                    verbose=False
+                )
+                
+                with st.spinner("🔍 Analizando consulta e interactuando con PostGIS..."):
+                    result = agent_executor.invoke({"input": prompt})
+                    response = result["output"]
+                
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                with st.chat_message("assistant"):
+                    st.markdown(f'<div class="assistant-response-box">🔹 <b>Resultado del Análisis:</b><br><br>{response}</div>', unsafe_allow_html=True)
+                    
+            except Exception as e:
+                st.error(f"❌ Error al procesar la consulta espacial: {e}")
