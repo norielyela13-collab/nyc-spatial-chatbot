@@ -127,8 +127,7 @@ if "bienvenida_mostrada" not in st.session_state:
 
 # Barra lateral estilizada con métricas
 with st.sidebar:
-    st.image("https://img.icons8.com/isometric-folders/100/map-marker.png", width=65)
-    st.header("⚙️ Panel de Control")
+    st.header("🗺️ Panel de Control")
     
     groq_api_key = st.text_input("🔑 Groq API Key", type="password", help="Pega aquí tu clave gsk_...")
     
