@@ -2,7 +2,7 @@ import streamlit as st
 import psycopg2
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import create_sql_agent
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 
 st.set_page_config(page_title="Asistente PostGIS NYC", page_icon="🗺️", layout="centered")
 
