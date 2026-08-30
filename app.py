@@ -75,6 +75,7 @@ st.markdown("""
         font-size: 0.93rem;
         line-height: 1.6;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+        margin-bottom: 8px;
     }
 
     [data-testid="stSidebar"] {
@@ -196,6 +197,11 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
             st.markdown(f'<div class="assistant-response-box">{msg["content"]}</div>', unsafe_allow_html=True)
+            if msg.get("sql"):
+                with st.expander("🔍 ¿Deseas saber cómo se realizó esta consulta?"):
+                    st.markdown("**Código SQL PostGIS ejecutado:**")
+                    st.code(msg["sql"], language="sql")
+                    st.caption("Esta consulta fue construida traduciendo tu intención en lenguaje natural a predicados espaciales sobre PostgreSQL/PostGIS.")
         else:
             st.write(msg["content"])
 
@@ -208,7 +214,7 @@ if prompt:
 
     if not GROQ_API_KEY:
         resp = "Error de servidor: No se ha configurado la variable GROQ_API_KEY en los Secrets de Streamlit Cloud."
-        st.session_state.messages.append({"role": "assistant", "content": resp})
+        st.session_state.messages.append({"role": "assistant", "content": resp, "sql": None})
         with st.chat_message("assistant"):
             st.error(resp)
     else:
@@ -218,7 +224,7 @@ if prompt:
                 "y tabular de la ciudad de Nueva York (PostGIS). Ajusta tu consulta para incluir términos "
                 "relacionados con barrios, geografía, vialidad o crímenes en NYC."
             )
-            st.session_state.messages.append({"role": "assistant", "content": respuesta_fuera_de_tema})
+            st.session_state.messages.append({"role": "assistant", "content": respuesta_fuera_de_tema, "sql": None})
             with st.chat_message("assistant"):
                 st.markdown(f'<div class="assistant-response-box">{respuesta_fuera_de_tema}</div>', unsafe_allow_html=True)
         else:
@@ -236,16 +242,38 @@ if prompt:
                     db=db, 
                     agent_type="tool-calling", 
                     prefix=PREFIX_PROMPT,
-                    verbose=False
+                    verbose=False,
+                    return_intermediate_steps=True
                 )
                 
                 with st.spinner("⚡ Procesando consulta con GPT-OSS 20B e interactuando con PostGIS..."):
                     result = agent_executor.invoke({"input": prompt})
-                    response = result["output"]
+                    response_text = result["output"]
+                    
+                    # Extracción del código SQL ejecutado en los pasos intermedios
+                    sql_query = None
+                    if "intermediate_steps" in result and result["intermediate_steps"]:
+                        for step in result["intermediate_steps"]:
+                            if len(step) > 0 and hasattr(step[0], 'tool_input'):
+                                tool_input = step[0].tool_input
+                                if isinstance(tool_input, dict) and "query" in tool_input:
+                                    sql_query = tool_input["query"]
+                                elif isinstance(tool_input, str):
+                                    sql_query = tool_input
                 
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": response_text,
+                    "sql": sql_query
+                })
+                
                 with st.chat_message("assistant"):
-                    st.markdown(f'<div class="assistant-response-box">{response}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="assistant-response-box">{response_text}</div>', unsafe_allow_html=True)
+                    if sql_query:
+                        with st.expander("🔍 ¿Deseas saber cómo se realizó esta consulta?"):
+                            st.markdown("**Código SQL PostGIS ejecutado:**")
+                            st.code(sql_query, language="sql")
+                            st.caption("Esta consulta fue construida traduciendo tu intención en lenguaje natural a predicados espaciales sobre PostgreSQL/PostGIS.")
                     
             except Exception as e:
                 st.error(f"Error al procesar la consulta espacial: {e}")
