@@ -6,50 +6,81 @@ from langchain_groq import ChatGroq
 
 # Configuración de página
 st.set_page_config(
-    page_title="NYC Spatial AI Agent | PostGIS",
+    page_title="NYC PostGIS Spatial Engine",
     page_icon="🗺️",
     layout="wide"
 )
 
-# Estilos CSS ligeros y enfocados exclusivamente en componentes personalizados
+# Estilos CSS profesionales: Limpieza visual, tipografía Inter y arquitectura Dashboard
 st.markdown("""
     <style>
-    /* Estilos para tarjetas informativas */
-    .stCard {
-        background-color: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 10px;
-        padding: 16px;
-        margin-bottom: 10px;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    .stCard h4 { margin-top: 0; color: #38bdf8; font-weight: 700; }
-    .stCard p { color: #cbd5e1; font-size: 0.9em; margin-bottom: 0; }
 
-    /* Estilo para las respuestas del asistente */
-    .assistant-response-box {
-        background-color: #0f172a;
-        border-left: 4px solid #0284c7;
-        border-radius: 6px;
-        padding: 16px;
-        margin-top: 8px;
-        color: #f8fafc;
+    .main .block-container {
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+        max-width: 1100px;
+    }
+
+    /* Tipografía y Encabezados */
+    .title-tech {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+        margin-bottom: 2px;
     }
     
-    /* Badge superior */
-    .badge-postgis {
-        background-color: #1e3a8a;
-        color: #93c5fd;
-        padding: 4px 12px;
-        border-radius: 16px;
-        font-size: 0.8rem;
+    .subtitle-tech {
+        font-size: 0.95rem;
+        color: #64748b;
+        margin-bottom: 1.25rem;
+    }
+
+    /* Modales y Tarjetas */
+    .stCard {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 14px;
+        margin-bottom: 10px;
+    }
+    .stCard h4 { margin-top: 0; color: #1e293b; font-weight: 600; font-size: 0.95rem; }
+    .stCard p { color: #475569; font-size: 0.85rem; margin-bottom: 0; }
+
+    /* Respuestas del asistente sin formato infantil */
+    .assistant-response-box {
+        background-color: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-left: 3px solid #2563eb;
+        border-radius: 4px;
+        padding: 14px 16px;
+        color: #1e293b;
+        font-size: 0.92rem;
+        line-height: 1.5;
+    }
+
+    /* Badge Técnico */
+    .badge-tech {
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
         font-weight: 600;
+        font-family: monospace;
         display: inline-block;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Recuperar URL desde secrets si está disponible, o usar fallback
+# Recuperar URL desde secrets o usar conexión Neon PostgreSQL por defecto
 DATABASE_URL = st.secrets.get(
     "DATABASE_URL", 
     "postgresql://neondb_owner:npg_GDoHi7IUaE8m@ep-bitter-mud-aylkic0b-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require"
@@ -75,29 +106,29 @@ def es_consulta_valida(prompt: str) -> bool:
     return any(palabra in prompt_lower for palabra in palabras_clave)
 
 # Modal de bienvenida
-@st.dialog("🏛️ Centro de Control Geoespacial — NYC PostGIS")
+@st.dialog("Centro de Control Geoespacial — NYC PostGIS")
 def modal_bienvenida():
-    st.write("**Bienvenido al sistema inteligente de analítica espacial para la ciudad de Nueva York.**")
+    st.write("Entorno analítico para la ejecución de consultas espacio-temporales sobre PostgreSQL/PostGIS.")
     st.divider()
     
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
         <div class="stCard">
-            <h4>🌐 Cobertura de Datos</h4>
-            <p>Acceso directo a capas raster y vectoriales: barrios, bloques censales, calles y crímenes registrados en NYC.</p>
+            <h4>Capa Vectorial y Tabular</h4>
+            <p>Acceso a datos de límites de barrios, bloques censales, red vial y registros delictivos de NYC.</p>
         </div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown("""
         <div class="stCard">
-            <h4>⚡ Motor IA + SQL Espacial</h4>
-            <p>Transforma preguntas en español a consultas PostGIS complejas (ST_Contains, ST_Distance, ST_Buffer, etc.).</p>
+            <h4>Procesamiento Espacial</h4>
+            <p>Evaluación de predicados y funciones (ST_Contains, ST_Distance, ST_Intersects, ST_Buffer).</p>
         </div>
         """, unsafe_allow_html=True)
         
     st.divider()
-    if st.button("🚀 Iniciar Sesión de Análisis", type="primary", use_container_width=True):
+    if st.button("Iniciar Panel de Análisis", type="primary", use_container_width=True):
         st.session_state.bienvenida_mostrada = True
         st.rerun()
 
@@ -109,48 +140,47 @@ if "messages" not in st.session_state:
 
 # Panel Lateral
 with st.sidebar:
-    st.header("🗺️ Panel de Control")
+    st.title("Parámetros")
     
-    groq_api_key = st.text_input("🔑 Groq API Key", type="password", help="Pega aquí tu clave gsk_...")
+    groq_api_key = st.text_input("Groq API Key", type="password", help="Pega aquí tu clave gsk_...")
     
     st.divider()
-    st.subheader("📡 Estado del Sistema")
-    st.metric(label="Base de Datos", value="Neon PostgreSQL", delta="PostGIS 3.x", delta_color="normal")
+    st.caption("INFRAESTRUCTURA DE DATOS")
+    st.text("BD: Neon PostgreSQL")
+    st.text("Motor Espacial: PostGIS 3.x")
     
     if groq_api_key:
-        st.success("API Key cargada", icon="✅")
+        st.success("API Key cargada correctamente")
     else:
-        st.warning("Falta API Key", icon="⚠️")
+        st.warning("Se requiere API Key")
         
     st.divider()
     
-    if st.button("🗑️ Limpiar Conversación", use_container_width=True):
+    # Botón con icono de escoba para vaciar el historial de búsquedas
+    if st.button("🧹 Limpiar historial", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 
-    if st.button("📖 Ver Guía de Inicio", use_container_width=True):
+    if st.button("Guía de uso", use_container_width=True):
         modal_bienvenida()
 
 # Encabezado Principal
-st.markdown('<div class="badge-postgis">📍 PostGIS Spatial Engine Enabled</div>', unsafe_allow_html=True)
-st.title("Asistente Analítico PostGIS NYC")
-st.caption("Generación de consultas geoespaciales avanzadas en lenguaje natural")
-
-st.divider()
+st.markdown('<div class="badge-tech">POSTGIS ENGINE // NYC SPATIAL DATA</div>', unsafe_allow_html=True)
+st.markdown('<div class="title-tech">Asistente de Analítica Espacial NYC</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle-tech">Traducción de consultas complejas en lenguaje natural a consultas SQL con PostGIS</div>', unsafe_allow_html=True)
 
 # Sugerencias rápidas
-st.write("💡 **Consultas rápidas de ejemplo:**")
 col_a, col_b, col_c = st.columns(3)
 
 prompt_sugerido = None
 with col_a:
-    if st.button("📊 Homicidios en NYC", use_container_width=True):
+    if st.button("Homicidios en NYC", use_container_width=True):
         prompt_sugerido = "¿Cuántos homicidios hay registrados en la base de datos de NYC?"
 with col_b:
-    if st.button("🏘️ Barrios de Brooklyn", use_container_width=True):
+    if st.button("Barrios de Brooklyn", use_container_width=True):
         prompt_sugerido = "¿Cuáles son los barrios ubicados en Brooklyn?"
 with col_c:
-    if st.button("🗽 Vecindarios destacados", use_container_width=True):
+    if st.button("Vecindarios por Borough", use_container_width=True):
         prompt_sugerido = "Muestra 5 barrios aleatorios con su respectivo condado (borough)"
 
 # Historial de Chat
@@ -170,16 +200,16 @@ if prompt:
         st.write(prompt)
 
     if not groq_api_key:
-        resp = "⚠️ **Atención:** Por favor, ingresa tu **Groq API Key** en el panel lateral para ejecutar la consulta."
+        resp = "Atención: Por favor, ingresa tu Groq API Key en el panel lateral para ejecutar la consulta."
         st.session_state.messages.append({"role": "assistant", "content": resp})
         with st.chat_message("assistant"):
             st.warning(resp)
     else:
         if not es_consulta_valida(prompt):
             respuesta_fuera_de_tema = (
-                "Este es un asistente especializado exclusivamente en información y análisis geoespacial "
-                "de la ciudad de Nueva York (PostGIS). Por favor, realiza una consulta relacionada con barrios, "
-                "geografía, criminalidad o datos espaciales de NYC."
+                "Consulta no procesada: Este sistema está restringido al análisis geoespacial "
+                "y tabular de la ciudad de Nueva York (PostGIS). Ajusta tu consulta para incluir términos "
+                "relacionados con barrios, geografía, vialidad o crímenes en NYC."
             )
             st.session_state.messages.append({"role": "assistant", "content": respuesta_fuera_de_tema})
             with st.chat_message("assistant"):
@@ -188,8 +218,9 @@ if prompt:
             try:
                 db = get_db_connection(DATABASE_URL)
                 
+                # Se utiliza llama3-70b-8192 para evitar errores 404 de modelo no encontrado
                 llm = ChatGroq(
-                    model="llama-3.3-70b-versatile",
+                    model="llama3-70b-8192",
                     groq_api_key=groq_api_key,
                     temperature=0
                 )
@@ -202,13 +233,13 @@ if prompt:
                     verbose=False
                 )
                 
-                with st.spinner("🔍 Analizando consulta e interactuando con PostGIS..."):
+                with st.spinner("Procesando consulta e interactuando con PostGIS..."):
                     result = agent_executor.invoke({"input": prompt})
                     response = result["output"]
                 
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 with st.chat_message("assistant"):
-                    st.markdown(f'<div class="assistant-response-box">🔹 <b>Resultado del Análisis:</b><br><br>{response}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="assistant-response-box">{response}</div>', unsafe_allow_html=True)
                     
             except Exception as e:
-                st.error(f"❌ Error al procesar la consulta espacial: {e}")
+                st.error(f"Error al procesar la consulta espacial: {e}")
