@@ -99,7 +99,7 @@ if prompt:
         try:
             db = SQLDatabase.from_uri(DATABASE_URL)
             llm = ChatGroq(
-                model="llama-3.3-70b-versatile",
+                model="llama-3.1-70b-versatile",
                 groq_api_key=groq_api_key,
                 temperature=0
             )
