@@ -58,7 +58,7 @@ if "bienvenida_mostrada" not in st.session_state:
 # Barra lateral
 with st.sidebar:
     st.header("⚙️ Configuración")
-    openai_api_key = st.text_input("OpenAI API Key", type="password")
+    groq_api_key = st.text_input("Groq API Key", type="password")
     if st.button("Revisar Guía de Inicio"):
         modal_bienvenida()
 
@@ -91,15 +91,24 @@ if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
 
-    if not openai_api_key:
-        resp = "Ingresa tu OpenAI API Key en la barra lateral para procesar la consulta."
+    if not groq_api_key:
+        resp = "Ingresa tu Groq API Key en la barra lateral para procesar la consulta."
         st.session_state.messages.append({"role": "assistant", "content": resp})
         st.chat_message("assistant").write(resp)
     else:
         try:
             db = SQLDatabase.from_uri(DATABASE_URL)
-            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, api_key=openai_api_key)
-            agent_executor = create_sql_agent(llm, db=db, agent_type="openai-tools", verbose=False)
+            llm = ChatGroq(
+                model="llama-3.3-70b-versatile",
+                groq_api_key=groq_api_key,
+                temperature=0
+            )
+            agent_executor = create_sql_agent(
+                llm, 
+                db=db, 
+                agent_type="tool-calling", 
+                verbose=False
+            )
             
             with st.spinner("Ejecutando consulta PostGIS..."):
                 result = agent_executor.invoke({"input": prompt})
