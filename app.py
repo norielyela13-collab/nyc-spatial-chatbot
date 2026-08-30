@@ -11,59 +11,81 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS avanzados para modernizar la interfaz
+# Estilos CSS con paleta en tonalidades de azul y negro (Dark Theme)
 st.markdown("""
     <style>
-    .stAppHeader {
-        background: rgba(255, 255, 255, 0.8);
+    /* Fondo principal en azul muy oscuro / negro */
+    .stApp {
+        background-color: #0b0f19;
+        color: #f1f5f9;
     }
+    
+    .stAppHeader {
+        background: rgba(11, 15, 25, 0.8);
+    }
+
     .block-container {
         padding-top: 2rem;
         padding-bottom: 3rem;
         max-width: 950px;
     }
+
+    /* Título principal con gradiente de cian y azul vibrante */
     .main-title {
         font-size: 2.3rem;
         font-weight: 800;
-        background: linear-gradient(90deg, #1e3a8a, #2563eb, #3b82f6);
+        background: linear-gradient(90deg, #38bdf8, #60a5fa, #818cf8);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0px;
     }
+
     .sub-title {
-        color: #475569;
+        color: #94a3b8;
         font-size: 1.05rem;
         margin-bottom: 25px;
     }
+
+    /* Tarjetas del modal e información en tonos azul noche */
     .stCard {
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border: 1px solid #bae6fd;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
         border-radius: 14px;
         padding: 18px;
         margin-bottom: 12px;
-        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.08);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
-    .stCard h4 { margin-top: 0; color: #0369a1; font-weight: 700; }
-    .stCard p { color: #334155; font-size: 0.92em; margin-bottom: 0; }
+    .stCard h4 { margin-top: 0; color: #38bdf8; font-weight: 700; }
+    .stCard p { color: #cbd5e1; font-size: 0.92em; margin-bottom: 0; }
 
+    /* Contenedor de respuestas del asistente en azul oscuro resaltado con cian */
     .assistant-response-box {
-        background-color: #f8fafc;
-        border-left: 5px solid #2563eb;
+        background-color: #111827;
+        border-left: 4px solid #38bdf8;
         border-radius: 8px;
         padding: 18px;
-        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.08);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         margin-top: 10px;
-        color: #0f172a;
+        color: #f3f4f6;
     }
+
+    /* Etiqueta / Badge en tonos azul profundo */
     .badge-postgis {
-        background-color: #dbeafe;
-        color: #1e40af;
+        background-color: #1e3a8a;
+        color: #93c5fd;
         padding: 4px 12px;
         border-radius: 20px;
         font-size: 0.82rem;
         font-weight: 600;
         display: inline-block;
         margin-bottom: 10px;
+        border: 1px solid #1d4ed8;
+    }
+
+    /* Personalización del Sidebar en tonos más oscuros */
+    [data-testid="stSidebar"] {
+        background-color: #030712;
+        border-right: 1px solid #1f2937;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -125,7 +147,11 @@ def modal_bienvenida():
 if "bienvenida_mostrada" not in st.session_state:
     modal_bienvenida()
 
-# Barra lateral estilizada con métricas
+# Inicializar historial de chat si no existe
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Barra lateral estilizada con métricas y control de limpieza
 with st.sidebar:
     st.header("🗺️ Panel de Control")
     
@@ -141,6 +167,12 @@ with st.sidebar:
         st.warning("Falta API Key", icon="⚠️")
         
     st.divider()
+    
+    # Botón para limpiar el chat
+    if st.button("🗑️ Limpiar Conversación", use_container_width=True, type="secondary"):
+        st.session_state.messages = []
+        st.rerun()
+
     if st.button("📖 Ver Guía de Inicio", use_container_width=True):
         modal_bienvenida()
 
@@ -164,10 +196,7 @@ with col_c:
     if st.button("🗽 Vecindarios destacados", use_container_width=True):
         prompt_sugerido = "Muestra 5 barrios aleatorios con su respectivo condado (borough)"
 
-# Historial de Chat
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
+# Renderizado del Historial de Chat
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
