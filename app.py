@@ -1,4 +1,5 @@
 import streamlit as st
+from sqlalchemy import create_engine
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import create_sql_agent
 from langchain_groq import ChatGroq
@@ -83,18 +84,29 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# URL de la base de datos PostgreSQL/PostGIS (Neon Tech)
+# Carga de credenciales desde el entorno / secrets de Streamlit
 DATABASE_URL = st.secrets.get(
     "DATABASE_URL", 
     "postgresql://neondb_owner:npg_GDoHi7IUaE8m@ep-bitter-mud-aylkic0b-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require"
 )
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", None)
 
 PREFIX_PROMPT = """Eres un asistente analítico especializado en la base de datos geoespacial de la ciudad de Nueva York (PostGIS).
 Responde a las preguntas del usuario generando consultas SQL geoespaciales eficientes en PostGIS y explicando brevemente los resultados en español."""
 
 @st.cache_resource
 def get_db_connection(url):
-    return SQLDatabase.from_uri(url)
+    if "sslmode=" not in url:
+        connector = "&" if "?" in url else "?"
+        url += f"{connector}sslmode=require&keepalives=1&keepalives_idle=30"
+    
+    engine = create_engine(
+        url,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        pool_timeout=30
+    )
+    return SQLDatabase(engine)
 
 def es_consulta_valida(prompt: str) -> bool:
     palabras_clave = [
@@ -139,22 +151,15 @@ if "bienvenida_mostrada" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Sidebar
+# Sidebar simplificado (sin pedir API Key)
 with st.sidebar:
-    st.title("⚙️ Parámetros")
+    st.title("⚙️ Sistema")
     
-    groq_api_key = st.text_input("🔑 Groq API Key", type="password", help="Pega tu clave gsk_...")
-    
-    st.divider()
     st.caption("INFRAESTRUCTURA DE DATOS")
     st.text("BD: Neon PostgreSQL")
     st.text("Motor Espacial: PostGIS 3.x")
     st.text("LLM: openai/gpt-oss-20b")
-    
-    if groq_api_key:
-        st.success("API Key cargada correctamente")
-    else:
-        st.warning("Se requiere API Key")
+    st.text("Estado: En línea 🟢")
         
     st.divider()
     
@@ -201,11 +206,11 @@ if prompt:
     with st.chat_message("user"):
         st.write(prompt)
 
-    if not groq_api_key:
-        resp = "Atención: Por favor, ingresa tu Groq API Key en el panel lateral para ejecutar la consulta."
+    if not GROQ_API_KEY:
+        resp = "Error de servidor: No se ha configurado la variable GROQ_API_KEY en los Secrets de Streamlit Cloud."
         st.session_state.messages.append({"role": "assistant", "content": resp})
         with st.chat_message("assistant"):
-            st.warning(resp)
+            st.error(resp)
     else:
         if not es_consulta_valida(prompt):
             respuesta_fuera_de_tema = (
@@ -220,10 +225,9 @@ if prompt:
             try:
                 db = get_db_connection(DATABASE_URL)
                 
-                # Configuración explícita con openai/gpt-oss-20b
                 llm = ChatGroq(
                     model="openai/gpt-oss-20b",
-                    groq_api_key=groq_api_key,
+                    groq_api_key=GROQ_API_KEY,
                     temperature=0
                 )
                 
