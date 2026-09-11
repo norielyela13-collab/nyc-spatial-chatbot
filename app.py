@@ -14,128 +14,118 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. CSS Avanzado: Malla Vectorial + Ondas Radiales HUD
+# 2. CSS Avanzado: GridHUD Vectorial + Corrección de Marcos Blancos y Viñeteado
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
     
-    /* Variables Globales */
     :root {
         --bg-dark: #07090e;
         --accent-red: #ff4a36;
         --accent-blue: #3b82f6;
         --border-color: rgba(255, 255, 255, 0.08);
+        --card-bg: rgba(13, 18, 30, 0.65);
     }
 
-    /* Animación de Ondas Radiales Concéntricas */
-    @keyframes radar-ripple {
-        0% {
-            width: 0px;
-            height: 0px;
-            opacity: 0.8;
-            border-color: rgba(255, 74, 54, 0.6);
-        }
-        50% {
-            opacity: 0.3;
-            border-color: rgba(59, 130, 246, 0.4);
-        }
-        100% {
-            width: 1200px;
-            height: 1200px;
-            opacity: 0;
-            border-color: rgba(59, 130, 246, 0);
-        }
-    }
-
-    /* Fondo Base con Malla Vectorial */
+    /* Override del Contenedor Raíz de Streamlit */
     .stApp {
         background-color: var(--bg-dark) !important;
-        background-image: 
-            radial-gradient(rgba(255, 74, 54, 0.12) 1.5px, transparent 1.5px),
-            radial-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px) !important;
-        background-size: 32px 32px, 16px 16px !important;
-        background-position: 0 0, 8px 8px !important;
         font-family: 'Plus Jakarta Sans', sans-serif !important;
         color: #f1f5f9 !important;
-        position: relative;
-        overflow-x: hidden;
     }
 
-    /* Contenedor de Ondas Absolutas (Overlay) */
-    .stApp::before, .stApp::after {
+    /* Malla Vectorial Sutil con Máscara de Desvanecimiento Radial (Look Profesional) */
+    .stApp::before {
         content: "";
         position: fixed;
-        top: 30%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        border: 1px solid rgba(255, 74, 54, 0.4);
-        border-radius: 50%;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-image: 
+            radial-gradient(rgba(59, 130, 246, 0.18) 1px, transparent 1px),
+            radial-gradient(rgba(255, 74, 54, 0.10) 1px, transparent 1px);
+        background-size: 28px 28px, 56px 56px;
+        background-position: 0 0, 14px 14px;
         pointer-events: none;
         z-index: 0;
-        animation: radar-ripple 8s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
-    }
-
-    .stApp::after {
-        animation-delay: 4s; /* Desfase para ondas continuas */
+        /* Atenuación hacia los bordes mediante máscara radial */
+        -webkit-mask-image: radial-gradient(circle at 50% 30%, black 20%, transparent 85%);
+        mask-image: radial-gradient(circle at 50% 30%, black 20%, transparent 85%);
     }
 
     .main .block-container {
         position: relative;
         z-index: 1;
         padding-top: 1.5rem;
-        padding-bottom: 2rem;
+        padding-bottom: 3rem;
         max-width: 1180px;
     }
 
-    /* Estilización de Botones */
-    div.stButton > button {
-        background: rgba(15, 23, 42, 0.7) !important;
-        color: #e2e8f0 !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 10px !important;
-        font-weight: 500 !important;
-        font-size: 0.88rem !important;
-        padding: 0.55rem 1rem !important;
-        backdrop-filter: blur(8px) !important;
-        transition: all 0.25s ease !important;
+    /* Corrección de la Franja/Caja Blanca Inferior de Streamlit */
+    footer, header, [data-testid="stHeader"] {
+        background-color: transparent !important;
     }
 
-    div.stButton > button:hover {
-        background: rgba(30, 41, 59, 0.9) !important;
-        color: #ffffff !important;
-        border-color: rgba(255, 74, 54, 0.5) !important;
-        box-shadow: 0 0 12px rgba(255, 74, 54, 0.25) !important;
-        transform: translateY(-1px) !important;
+    div[data-testid="stBottom"], div[data-testid="stBottom"] > div {
+        background-color: transparent !important;
+        background: transparent !important;
     }
 
-    /* Custom Radio Controls */
-    div[data-testid="stRadio"] div[role="radiogroup"] {
-        background-color: rgba(15, 23, 42, 0.6) !important;
-        padding: 6px 12px !important;
-        border-radius: 10px !important;
-        border: 1px solid var(--border-color) !important;
-        backdrop-filter: blur(8px) !important;
-    }
-
-    /* Componente de ChatInput */
     div[data-testid="stChatInput"] {
-        background-color: rgba(15, 23, 42, 0.8) !important;
+        background-color: rgba(13, 18, 30, 0.85) !important;
         border: 1px solid var(--border-color) !important;
         border-radius: 12px !important;
-        backdrop-filter: blur(12px) !important;
+        backdrop-filter: blur(16px) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    div[data-testid="stChatInput"] textarea {
+        color: #f1f5f9 !important;
+        font-size: 0.9rem !important;
     }
 
     div[data-testid="stChatInput"]:focus-within {
-        border-color: rgba(255, 74, 54, 0.6) !important;
-        box-shadow: 0 0 15px rgba(255, 74, 54, 0.15) !important;
+        border-color: rgba(255, 74, 54, 0.5) !important;
+        box-shadow: 0 0 18px rgba(255, 74, 54, 0.2) !important;
     }
 
-    /* Structural Components */
+    /* Botones Interactivos */
+    div.stButton > button {
+        background: var(--card-bg) !important;
+        color: #cbd5e1 !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 10px !important;
+        font-weight: 500 !important;
+        font-size: 0.85rem !important;
+        padding: 0.55rem 1rem !important;
+        backdrop-filter: blur(12px) !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    div.stButton > button:hover {
+        background: rgba(21, 29, 46, 0.9) !important;
+        color: #ffffff !important;
+        border-color: rgba(255, 74, 54, 0.4) !important;
+        box-shadow: 0 4px 20px rgba(255, 74, 54, 0.15) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* Controles de Nivel (Radio) */
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        background-color: var(--card-bg) !important;
+        padding: 6px 14px !important;
+        border-radius: 10px !important;
+        border: 1px solid var(--border-color) !important;
+        backdrop-filter: blur(12px) !important;
+    }
+
+    /* Estructura UI */
     .top-navbar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: rgba(15, 23, 42, 0.65);
+        background: var(--card-bg);
         border: 1px solid var(--border-color);
         border-radius: 14px;
         padding: 12px 20px;
@@ -173,7 +163,7 @@ st.markdown("""
     }
 
     .brand-badge {
-        background-color: rgba(255, 74, 54, 0.1);
+        background-color: rgba(255, 74, 54, 0.12);
         color: var(--accent-red);
         font-size: 0.7rem;
         font-weight: 600;
@@ -215,7 +205,7 @@ st.markdown("""
     }
 
     .hero-title {
-        font-size: 2.5rem;
+        font-size: 2.3rem;
         font-weight: 800;
         letter-spacing: -0.02em;
         color: #ffffff;
@@ -223,7 +213,7 @@ st.markdown("""
     }
 
     .hero-description {
-        font-size: 0.98rem;
+        font-size: 0.95rem;
         color: #94a3b8;
         max-width: 680px;
         margin: 0 auto;
@@ -231,15 +221,15 @@ st.markdown("""
     }
 
     .action-card {
-        background: rgba(15, 23, 42, 0.5);
+        background: var(--card-bg);
         border: 1px solid var(--border-color);
         border-radius: 14px;
         padding: 18px;
-        min-height: 125px;
+        min-height: 120px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(12px);
     }
 
     .card-info h3 {
@@ -257,7 +247,7 @@ st.markdown("""
     }
 
     .assistant-response-card {
-        background: rgba(15, 23, 42, 0.7);
+        background: rgba(13, 18, 30, 0.75);
         border: 1px solid var(--border-color);
         border-left: 3px solid var(--accent-red);
         border-radius: 10px;
@@ -266,7 +256,7 @@ st.markdown("""
         color: #e2e8f0;
         font-size: 0.92rem;
         line-height: 1.6;
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(12px);
     }
 
     .footer-credits {
@@ -299,7 +289,6 @@ def activar_modo_directo():
 DATABASE_URL = st.secrets.get("DATABASE_URL", "")
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", None)
 
-# Capa de Mapa Libre de Esri (Sin Token/API Key Exigido)
 ESRI_DARK_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
 ESRI_ATTR = "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
 
