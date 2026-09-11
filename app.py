@@ -13,27 +13,17 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Inyección CSS Estilo Dark / OpenClaw Azul Neón con Animaciones CSS Keyframes
+# 2. Inyección CSS Estilo Dark / OpenClaw Azul Neón con Malla Animada
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
     
-    /* FONDO OSCURO TIPO OPENCLAW CON PATRÓN DE PUNTOS AZULES */
-    .stApp {
-        background-color: #0b0f19;
-        background-image: radial-gradient(rgba(59, 130, 246, 0.25) 1.5px, transparent 1.5px);
-        background-size: 28px 28px;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        color: #f1f5f9;
+    /* ANIMACIÓN DE ONDA/OLLAS PARA EL PATRÓN DE PUNTOS */
+    @keyframes move-background {
+        0% { background-position: 0 0; }
+        100% { background-position: 56px 56px; }
     }
 
-    .main .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
-        max-width: 1100px;
-    }
-
-    /* ANIMACIONES CSS */
     @keyframes float {
         0% { transform: translateY(0px); }
         50% { transform: translateY(-6px); }
@@ -46,7 +36,77 @@ st.markdown("""
         100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
     }
 
-    /* NAVBAR SUPERIOR ESTILO CYBER/BLUE */
+    /* FONDO OSCURO CON MALLA DE PUNTOS ANIMADA EN ONDA */
+    .stApp {
+        background-color: #0b0f19 !important;
+        background-image: radial-gradient(rgba(59, 130, 246, 0.35) 1.5px, transparent 1.5px) !important;
+        background-size: 28px 28px !important;
+        animation: move-background 8s linear infinite !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        color: #f1f5f9 !important;
+    }
+
+    .main .block-container {
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+        max-width: 1100px;
+    }
+
+    /* SOBREESCRITURA DE BOTONES NATIVOS DE STREAMLIT (CORRECCIÓN MASCARILLA BLANCA) */
+    div.stButton > button {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+        color: #93c5fd !important;
+        border: 1px solid #3b82f6 !important;
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    div.stButton > button:hover {
+        background: #2563eb !important;
+        color: #ffffff !important;
+        border-color: #60a5fa !important;
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.6) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    /* FIX SELECTOR RADIO (NIVEL DE DETALLE) */
+    div[data-testid="stRadio"] label {
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        background-color: #111827 !important;
+        padding: 8px 16px !important;
+        border-radius: 12px !important;
+        border: 1px solid #1e293b !important;
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"] p {
+        color: #60a5fa !important;
+    }
+
+    /* FIX CHAT INPUT Y MASCARILLA INFERIOR */
+    div[data-testid="stChatInput"] {
+        background-color: #111827 !important;
+        border: 1px solid #3b82f6 !important;
+        border-radius: 14px !important;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important;
+    }
+
+    div[data-testid="stChatInput"] textarea {
+        color: #f1f5f9 !important;
+        background-color: transparent !important;
+    }
+
+    div[data-testid="stBottomBlockContainer"] {
+        background-color: transparent !important;
+    }
+
+    /* NAVBAR SUPERIOR ESTILO CYBER */
     .top-navbar {
         display: flex;
         justify-content: space-between;
@@ -151,7 +211,7 @@ st.markdown("""
         line-height: 1.6;
     }
 
-    /* CARDS DE ACCESO RÁPIDO ANIMADAS */
+    /* CARDS DE ACCESO RÁPIDO */
     .cards-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -214,7 +274,6 @@ st.markdown("""
         box-shadow: 0 8px 20px rgba(0,0,0,0.4);
     }
 
-    /* FOOTER DISCRETO */
     .footer-credits {
         text-align: center;
         font-size: 0.8rem;
@@ -226,7 +285,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Credenciales de la base de datos y API
+# 3. Credenciales
 DATABASE_URL = st.secrets.get(
     "DATABASE_URL", 
     "postgresql://neondb_owner:npg_GDoHi7IUaE8m@ep-bitter-mud-aylkic0b-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require"
