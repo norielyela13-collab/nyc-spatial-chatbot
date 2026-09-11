@@ -18,10 +18,10 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
     
-    /* ANIMACIÓN DE ONDA/OLLAS PARA EL PATRÓN DE PUNTOS */
+    /* ANIMACIÓN DE ONDA AJUSTADA AL NUEVO TAMAÑO DE RETÍCULA (48px * 2 = 96px) */
     @keyframes move-background {
         0% { background-position: 0 0; }
-        100% { background-position: 56px 56px; }
+        100% { background-position: 96px 96px; }
     }
 
     @keyframes float {
@@ -36,12 +36,12 @@ st.markdown("""
         100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
     }
 
-    /* FONDO OSCURO CON MALLA DE PUNTOS ANIMADA EN ONDA */
+    /* FONDO OSCURO CON CÍRCULOS Y ESPACIADO MÁS GRANDES */
     .stApp {
         background-color: #0b0f19 !important;
-        background-image: radial-gradient(rgba(59, 130, 246, 0.35) 1.5px, transparent 1.5px) !important;
-        background-size: 28px 28px !important;
-        animation: move-background 8s linear infinite !important;
+        background-image: radial-gradient(rgba(59, 130, 246, 0.45) 3.5px, transparent 3.5px) !important;
+        background-size: 48px 48px !important;
+        animation: move-background 10s linear infinite !important;
         font-family: 'Plus Jakarta Sans', sans-serif !important;
         color: #f1f5f9 !important;
     }
@@ -52,7 +52,7 @@ st.markdown("""
         max-width: 1100px;
     }
 
-    /* SOBREESCRITURA DE BOTONES NATIVOS DE STREAMLIT (CORRECCIÓN MASCARILLA BLANCA) */
+    /* SOBREESCRITURA DE BOTONES NATIVOS DE STREAMLIT */
     div.stButton > button {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
         color: #93c5fd !important;
@@ -462,7 +462,7 @@ if prompt:
                             icon=folium.Icon(color="blue", icon="info-sign")
                         ).add_to(m)
                         folium.Circle(
-                            radius=400,
+                            radius=800,  # AUMENTADO DE 400 A 800 METROS
                             location=[40.6862, -73.9882],
                             color="#3b82f6",
                             fill=True,
