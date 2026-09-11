@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Inyección CSS Estilo Dark / OpenClaw Azul Neón con Malla Animada
+# 2. Inyección CSS Estilo Dark / OpenClaw
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -51,7 +51,6 @@ st.markdown("""
         max-width: 1150px;
     }
 
-    /* SOBREESCRITURA DE BOTONES NATIVOS DE STREAMLIT */
     div.stButton > button {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
         color: #93c5fd !important;
@@ -71,7 +70,6 @@ st.markdown("""
         transform: translateY(-2px) !important;
     }
 
-    /* FIX SELECTOR RADIO (NIVEL DE DETALLE) */
     div[data-testid="stRadio"] label {
         color: #94a3b8 !important;
         font-weight: 600 !important;
@@ -88,7 +86,6 @@ st.markdown("""
         color: #60a5fa !important;
     }
 
-    /* FIX CHAT INPUT Y MASCARILLA INFERIOR */
     div[data-testid="stChatInput"] {
         background-color: #111827 !important;
         border: 1px solid #3b82f6 !important;
@@ -105,7 +102,6 @@ st.markdown("""
         background-color: transparent !important;
     }
 
-    /* NAVBAR SUPERIOR ESTILO CYBER */
     .top-navbar {
         display: flex;
         justify-content: space-between;
@@ -186,7 +182,6 @@ st.markdown("""
         animation: pulse-blue 2s infinite;
     }
 
-    /* HERO HEADER */
     .hero-container {
         text-align: center;
         margin: 20px 0 35px 0;
@@ -210,7 +205,6 @@ st.markdown("""
         line-height: 1.6;
     }
 
-    /* CARDS DE ACCESO RÁPIDO */
     .action-card {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
         border: 1px solid #334155;
@@ -237,7 +231,6 @@ st.markdown("""
         line-height: 1.4;
     }
 
-    /* TARJETA DE RESPUESTA EN CHAT */
     .assistant-response-card {
         background: #111827;
         border: 1px solid #1e293b;
@@ -262,11 +255,25 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Credenciales
-DATABASE_URL = st.secrets.get(
-    "DATABASE_URL", 
-    "postgresql://neondb_owner:npg_GDoHi7IUaE8m@ep-bitter-mud-aylkic0b-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require"
-)
+# 3. Inicialización del Session State
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "pending_prompt" not in st.session_state:
+    st.session_state.pending_prompt = None
+if "modo_visualizacion_directa" not in st.session_state:
+    st.session_state.modo_visualizacion_directa = False
+
+# Funciones Callback para la gestión de estado
+def set_prompt(texto):
+    st.session_state.pending_prompt = texto
+    st.session_state.modo_visualizacion_directa = False
+
+def activar_modo_directo():
+    st.session_state.modo_visualizacion_directa = True
+    st.session_state.pending_prompt = None
+
+# Credenciales desde st.secrets
+DATABASE_URL = st.secrets.get("DATABASE_URL", "")
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", None)
 
 PREFIX_PROMPT = """Eres un asistente analítico especializado en la base de datos geoespacial de la ciudad de Nueva York (PostGIS).
@@ -280,17 +287,19 @@ INSTRUCCIONES DE SALIDA:
 
 @st.cache_resource
 def get_db_connection(url):
+    if not url:
+        st.error("DATABASE_URL no configurada en st.secrets.")
+        st.stop()
     if "sslmode=" not in url:
         connector = "&" if "?" in url else "?"
         url += f"{connector}sslmode=require&keepalives=1&keepalives_idle=30"
-    
     engine = create_engine(url, pool_pre_ping=True, pool_recycle=300, pool_timeout=30)
     return SQLDatabase(engine)
 
 def es_consulta_valida(prompt: str) -> bool:
     return len(prompt.lower().strip()) >= 3
 
-# --- BARRA SUPERIOR (NAVBAR) ---
+# Navbar Superior
 st.markdown("""
 <div class="top-navbar">
     <div class="brand-section">
@@ -306,7 +315,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- HEADER CENTRADO HERO ---
+# Hero Header
 st.markdown("""
 <div class="hero-container">
     <div class="hero-title">Asistente Geográfico PostGIS</div>
@@ -316,10 +325,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-prompt_sugerido = None
-modo_visualizacion_directa = False
-
-# --- CARDS DE ACCESO RÁPIDO EN TRES COLUMNAS ---
+# Cards de Acceso Rápido
 col_card1, col_card2, col_card3 = st.columns(3)
 
 with col_card1:
@@ -331,8 +337,8 @@ with col_card1:
         </div>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Explorar →", key="btn_explorar_card", use_container_width=True):
-        prompt_sugerido = "¿Cuál es la distribución de homicidios por barrio en Nueva York y los barrios con mayor concentración delictiva?"
+    st.button("Explorar →", key="btn_explorar_card", use_container_width=True, 
+              on_click=set_prompt, args=("¿Cuál es la distribución de homicidios por barrio en Nueva York y los barrios con mayor concentración delictiva?",))
 
 with col_card2:
     st.markdown("""
@@ -343,8 +349,8 @@ with col_card2:
         </div>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Ejecutar →", key="btn_ejecutar_card", use_container_width=True):
-        prompt_sugerido = "Muestra una consulta con la función espacial ST_Contains para analizar barrios dentro de un área específica."
+    st.button("Ejecutar →", key="btn_ejecutar_card", use_container_width=True, 
+              on_click=set_prompt, args=("Muestra una consulta con la función espacial ST_Contains para analizar barrios dentro de un área específica.",))
 
 with col_card3:
     st.markdown("""
@@ -355,12 +361,11 @@ with col_card3:
         </div>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Visualizar →", key="btn_visualizar_card", use_container_width=True):
-        modo_visualizacion_directa = True
+    st.button("Visualizar →", key="btn_visualizar_card", use_container_width=True, on_click=activar_modo_directo)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- SELECTOR DE NIVEL DE RESPUESTA ---
+# Selector de Nivel
 st.caption("⚙️ **Nivel de detalle de la respuesta:**")
 nivel = st.radio(
     "Nivel de detalle",
@@ -372,23 +377,25 @@ nivel = st.radio(
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- BOTONES DE SUGERENCIAS RÁPIDAS ---
+# Botones de Sugerencias Rápida
 col_s1, col_s2, col_s3 = st.columns(3)
-
 with col_s1:
-    if st.button("📊 Homicidios en Boerum Hill", use_container_width=True):
-        prompt_sugerido = "¿Cuántos homicidios hay registrados en el barrio Boerum Hill y muestra su ubicación en el mapa?"
+    st.button("📊 Homicidios en Boerum Hill", use_container_width=True, 
+              on_click=set_prompt, args=("¿Cuántos homicidios hay registrados en el barrio Boerum Hill y muestra su ubicación en el mapa?",))
 with col_s2:
-    if st.button("🏘️ Barrios de Brooklyn", use_container_width=True):
-        prompt_sugerido = "¿Cuáles son los barrios ubicados en Brooklyn y muestra el mapa de Nueva York?"
+    st.button("🏘️ Barrios de Brooklyn", use_container_width=True, 
+              on_click=set_prompt, args=("¿Cuáles son los barrios ubicados en Brooklyn y muestra el mapa de Nueva York?",))
 with col_s3:
-    if st.button("🗽 Vecindarios de Manhattan", use_container_width=True):
-        prompt_sugerido = "Muestra barrios del condado de Manhattan en la base de datos"
+    st.button("🗽 Vecindarios de Manhattan", use_container_width=True, 
+              on_click=set_prompt, args=("Muestra barrios del condado de Manhattan en la base de datos",))
 
-# --- HISTORIAL DE CHAT ---
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# Captura de input del chat
+prompt_user = st.chat_input("Escribe tu consulta espacial (ej: Muestra los barrios de Brooklyn o analiza Boerum Hill)...")
+if prompt_user:
+    st.session_state.pending_prompt = prompt_user
+    st.session_state.modo_visualizacion_directa = False
 
+# Renderizado del Historial previo
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
@@ -399,24 +406,18 @@ for msg in st.session_state.messages:
         else:
             st.write(msg["content"])
 
-# --- ENTRADA PRINCIPAL DE CHAT ---
-prompt_user = st.chat_input("Escribe tu consulta espacial (ej: Muestra los barrios de Brooklyn o analiza Boerum Hill)...")
-prompt = prompt_user or prompt_sugerido
-
-# --- CASO A: MODO VISUALIZACIÓN DIRECTA (CLIC EN BOTÓN "VISUALIZAR →") ---
-if modo_visualizacion_directa:
+# Lógica de Ejecución
+if st.session_state.modo_visualizacion_directa:
     st.subheader("🗺️ Visor Geográfico Interactivo Directo (NYC)")
     st.info("Cargando capas interactivas y puntos principales de la base de datos...")
     
     m_direct = folium.Map(location=[40.7128, -74.0060], zoom_start=11, tiles="CartoDB dark_matter")
-    
     puntos_interes = [
         {"nombre": "Boerum Hill", "lat": 40.6862, "lng": -73.9882, "borough": "Brooklyn", "color": "blue"},
         {"nombre": "Financial District", "lat": 40.7075, "lng": -74.0089, "borough": "Manhattan", "color": "purple"},
         {"nombre": "Midtown Manhattan", "lat": 40.7549, "lng": -73.9840, "borough": "Manhattan", "color": "purple"},
         {"nombre": "Astoria", "lat": 40.7644, "lng": -73.9235, "borough": "Queens", "color": "green"},
     ]
-    
     for p in puntos_interes:
         folium.Marker(
             [p["lat"], p["lng"]],
@@ -425,17 +426,20 @@ if modo_visualizacion_directa:
             icon=folium.Icon(color=p["color"], icon="info-sign")
         ).add_to(m_direct)
         
-    map_data_direct = st_folium(m_direct, width=1000, height=450)
+    map_data_direct = st_folium(m_direct, width=1000, height=450, key="folium_direct_map")
     if map_data_direct and map_data_direct.get("last_clicked"):
         click_lat = map_data_direct["last_clicked"]["lat"]
         click_lng = map_data_direct["last_clicked"]["lng"]
         st.info(f"📍 **Coordenada seleccionada:** Latitud `{click_lat:.5f}`, Longitud `{click_lng:.5f}`")
 
-# --- CASO B: PROCESAMIENTO CON AGENTE LLM Y POSTGIS ---
-elif prompt:
-    st.session_state.messages.append({"role": "user", "content": prompt})
+elif st.session_state.pending_prompt:
+    prompt_actual = st.session_state.pending_prompt
+    # Se limpia para evitar que reejecuciones mantengan la petición
+    st.session_state.pending_prompt = None
+
+    st.session_state.messages.append({"role": "user", "content": prompt_actual})
     with st.chat_message("user"):
-        st.write(prompt)
+        st.write(prompt_actual)
 
     if not GROQ_API_KEY:
         resp = "Error: Configura GROQ_API_KEY en los Secrets de Streamlit."
@@ -443,7 +447,7 @@ elif prompt:
         with st.chat_message("assistant"):
             st.error(resp)
     else:
-        if not es_consulta_valida(prompt):
+        if not es_consulta_valida(prompt_actual):
             resp = "Consulta inválida. Por favor escribe una consulta más detallada."
             st.session_state.messages.append({"role": "assistant", "content": resp, "sql": None})
             with st.chat_message("assistant"):
@@ -463,7 +467,7 @@ elif prompt:
                 )
                 
                 with st.spinner("⚡ Procesando análisis geoespacial..."):
-                    result = agent_executor.invoke({"input": f"[{nivel}] {prompt}"})
+                    result = agent_executor.invoke({"input": f"[{nivel}] {prompt_actual}"})
                     response_text = result["output"]
                     
                     sql_query = None
@@ -481,24 +485,20 @@ elif prompt:
                 with st.chat_message("assistant"):
                     st.markdown(f'<div class="assistant-response-card">{response_text}</div>', unsafe_allow_html=True)
                     
-                    # VISOR DE MAPA ESPACIAL INTERACTIVO (FOLIUM)
                     st.subheader("🗺️ Visor de Mapa Espacial Interactivo (NYC)")
                     m = folium.Map(location=[40.7128, -74.0060], zoom_start=11, tiles="CartoDB dark_matter")
                     
-                    # Evaluación de contexto geoespacial para renderizado dinámico
-                    prompt_lower = prompt.lower()
+                    prompt_lower = prompt_actual.lower()
                     if "boerum hill" in prompt_lower:
                         map_center = [40.6862, -73.9882]
                         m.location = map_center
                         m.zoom_start = 14
-                        
                         folium.Marker(
                             map_center,
                             popup=folium.Popup("<b>Barrio: Boerum Hill</b><br>Borough: Brooklyn<br>Atributo: Área bajo análisis", max_width=250),
                             tooltip="Haz clic para ver más información",
                             icon=folium.Icon(color="blue", icon="info-sign")
                         ).add_to(m)
-                        
                         folium.Circle(
                             radius=600,
                             location=map_center,
@@ -529,10 +529,8 @@ elif prompt:
                             icon=folium.Icon(color="purple", icon="star")
                         ).add_to(m)
 
-                    # Evento interactivo st_folium: captura clics e interacción en el mapa
-                    map_data = st_folium(m, width=1000, height=420)
+                    map_data = st_folium(m, width=1000, height=420, key="folium_agent_map")
 
-                    # Si el usuario hace clic en el mapa, muestra las coordenadas seleccionadas
                     if map_data and map_data.get("last_clicked"):
                         click_lat = map_data["last_clicked"]["lat"]
                         click_lng = map_data["last_clicked"]["lng"]
@@ -545,7 +543,7 @@ elif prompt:
             except Exception as e:
                 st.error(f"Error al procesar la consulta espacial: {e}")
 
-# --- FOOTER ---
+# Footer
 st.markdown("""
 <div class="footer-credits">
     Asistente PostGIS para Catastro y Geodesia • Universidad Distrital Francisco José de Caldas
