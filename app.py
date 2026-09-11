@@ -18,7 +18,6 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
     
-    /* ANIMACIÓN DE ONDA AJUSTADA AL NUEVO TAMAÑO DE RETÍCULA (48px * 2 = 96px) */
     @keyframes move-background {
         0% { background-position: 0 0; }
         100% { background-position: 96px 96px; }
@@ -36,7 +35,6 @@ st.markdown("""
         100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
     }
 
-    /* FONDO OSCURO CON CÍRCULOS Y ESPACIADO MÁS GRANDES */
     .stApp {
         background-color: #0b0f19 !important;
         background-image: radial-gradient(rgba(59, 130, 246, 0.45) 3.5px, transparent 3.5px) !important;
@@ -212,29 +210,16 @@ st.markdown("""
     }
 
     /* CARDS DE ACCESO RÁPIDO */
-    .cards-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 30px;
-    }
-
     .action-card {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
         border: 1px solid #334155;
         border-radius: 18px;
         padding: 22px;
+        min-height: 120px;
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        transition: all 0.3s ease;
+        flex-direction: column;
+        justify-content: center;
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-    }
-
-    .action-card:hover {
-        border-color: #3b82f6;
-        transform: translateY(-4px);
-        box-shadow: 0 12px 25px rgba(59, 130, 246, 0.25);
     }
 
     .card-info h3 {
@@ -248,16 +233,6 @@ st.markdown("""
         color: #94a3b8;
         font-size: 0.85rem;
         margin: 0;
-    }
-
-    .card-action-btn {
-        background: #2563eb;
-        color: white;
-        border-radius: 10px;
-        padding: 8px 16px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        border: none;
     }
 
     /* TARJETA DE RESPUESTA EN CHAT */
@@ -339,25 +314,36 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- CARDS DE ACCESO RÁPIDO ---
-st.markdown("""
-<div class="cards-grid">
+prompt_sugerido = None
+
+# --- CARDS DE ACCESO RÁPIDO CON BOTONES NATIVOS INTERACTIVOS ---
+col_card1, col_card2 = st.columns(2)
+
+with col_card1:
+    st.markdown("""
     <div class="action-card">
         <div class="card-info">
             <h3>📊 Análisis de Delitos & Densidad</h3>
-            <p>Conteo de homicidios, distribución por barrio y densidad delictiva.</p>
+            <p>Conteo de homicidios, distribución por barrio y densidad delictiva en NYC.</p>
         </div>
-        <div class="card-action-btn">Explorar →</div>
     </div>
+    """, unsafe_allow_html=True)
+    if st.button("Explorar →", key="btn_explorar_card", use_container_width=True):
+        prompt_sugerido = "¿Cuál es la distribución de homicidios por barrio en Nueva York y los barrios con mayor concentración delictiva?"
+
+with col_card2:
+    st.markdown("""
     <div class="action-card">
         <div class="card-info">
             <h3>🗺️ Funciones Espaciales PostGIS</h3>
-            <p>Consultas espaciales con ST_Contains, ST_Intersects y buffers.</p>
+            <p>Consultas espaciales topológicas con ST_Contains, ST_Intersects y buffers.</p>
         </div>
-        <div class="card-action-btn">Ejecutar →</div>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+    if st.button("Ejecutar →", key="btn_ejecutar_card", use_container_width=True):
+        prompt_sugerido = "Muestra una consulta con la función espacial ST_Contains para analizar barrios dentro de un área específica."
+
+st.markdown("<br>", unsafe_allow_html=True)
 
 # --- SELECTOR DE NIVEL DE RESPUESTA ---
 st.caption("⚙️ **Nivel de detalle de la respuesta:**")
@@ -373,7 +359,6 @@ st.markdown("<br>", unsafe_allow_html=True)
 
 # --- BOTONES DE SUGERENCIAS RÁPIDAS ---
 col_s1, col_s2, col_s3 = st.columns(3)
-prompt_sugerido = None
 
 with col_s1:
     if st.button("📊 Homicidios en Boerum Hill", use_container_width=True):
@@ -400,7 +385,8 @@ for msg in st.session_state.messages:
             st.write(msg["content"])
 
 # --- ENTRADA PRINCIPAL DE CHAT ---
-prompt = st.chat_input("Escribe tu consulta espacial (ej: Muestra los barrios de Brooklyn o analiza Boerum Hill)...") or prompt_sugerido
+prompt_user = st.chat_input("Escribe tu consulta espacial (ej: Muestra los barrios de Brooklyn o analiza Boerum Hill)...")
+prompt = prompt_user or prompt_sugerido
 
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -462,7 +448,7 @@ if prompt:
                             icon=folium.Icon(color="blue", icon="info-sign")
                         ).add_to(m)
                         folium.Circle(
-                            radius=800,  # AUMENTADO DE 400 A 800 METROS
+                            radius=800,
                             location=[40.6862, -73.9882],
                             color="#3b82f6",
                             fill=True,
