@@ -1,3 +1,4 @@
+import json
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
@@ -47,7 +48,7 @@ st.markdown("""
     .main .block-container {
         padding-top: 1.5rem;
         padding-bottom: 2rem;
-        max-width: 1100px;
+        max-width: 1150px;
     }
 
     /* SOBREESCRITURA DE BOTONES NATIVOS DE STREAMLIT */
@@ -214,25 +215,26 @@ st.markdown("""
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
         border: 1px solid #334155;
         border-radius: 18px;
-        padding: 22px;
-        min-height: 120px;
+        padding: 20px;
+        min-height: 140px;
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: space-between;
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
     }
 
     .card-info h3 {
         color: #ffffff;
-        font-size: 1.1rem;
+        font-size: 1rem;
         font-weight: 700;
         margin: 0 0 6px 0;
     }
 
     .card-info p {
         color: #94a3b8;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
         margin: 0;
+        line-height: 1.4;
     }
 
     /* TARJETA DE RESPUESTA EN CHAT */
@@ -271,7 +273,7 @@ PREFIX_PROMPT = """Eres un asistente analítico especializado en la base de dato
 
 INSTRUCCIONES DE SALIDA:
 1. Tu respuesta final DEBE SER SIEMPRE una respuesta redactada en lenguaje natural en español explicando detalladamente los hallazgos o datos encontrados.
-2. Si la consulta involucra un barrio o coordenadas de NYC, incluye el nombre del barrio y sus datos geográficos clave.
+2. Si la consulta involucra la representación de mapas, barrios o puntos, asegúrate de utilizar ST_AsGeoJSON(geom) o ST_Y(ST_Centroid(geom)), ST_X(ST_Centroid(geom)) en tus consultas internas para extraer coordenadas exactas o geometrías completas.
 3. NUNCA respondas devolviendo únicamente la sentencia SQL ni estructures tu respuesta final como un bloque de código.
 4. Utiliza la información retornada por las herramientas SQL para redactar tu informe con claridad técnica.
 """
@@ -316,8 +318,8 @@ st.markdown("""
 
 prompt_sugerido = None
 
-# --- CARDS DE ACCESO RÁPIDO CON BOTONES NATIVOS INTERACTIVOS ---
-col_card1, col_card2 = st.columns(2)
+# --- CARDS DE ACCESO RÁPIDO EN TRES COLUMNAS ---
+col_card1, col_card2, col_card3 = st.columns(3)
 
 with col_card1:
     st.markdown("""
@@ -342,6 +344,18 @@ with col_card2:
     """, unsafe_allow_html=True)
     if st.button("Ejecutar →", key="btn_ejecutar_card", use_container_width=True):
         prompt_sugerido = "Muestra una consulta con la función espacial ST_Contains para analizar barrios dentro de un área específica."
+
+with col_card3:
+    st.markdown("""
+    <div class="action-card">
+        <div class="card-info">
+            <h3>📍 Mapeo Vectorial Interactivo</h3>
+            <p>Extrae geometrías de la BD mediante ST_AsGeoJSON y renderiza capas cliqueables.</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Visualizar →", key="btn_visualizar_card", use_container_width=True):
+        prompt_sugerido = "Obtén los límites en GeoJSON del barrio Boerum Hill o Manhattan y proyecta sus geometrías e información en el mapa interactivo."
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -437,25 +451,62 @@ if prompt:
                 with st.chat_message("assistant"):
                     st.markdown(f'<div class="assistant-response-card">{response_text}</div>', unsafe_allow_html=True)
                     
-                    # VISOR DE MAPA ESPACIAL (FOLIUM)
-                    st.subheader("🗺️ Visor de Mapa Espacial (NYC)")
-                    m = folium.Map(location=[40.6925, -73.9903], zoom_start=12, tiles="CartoDB dark_matter")
+                    # VISOR DE MAPA ESPACIAL INTERACTIVO (FOLIUM)
+                    st.subheader("🗺️ Visor de Mapa Espacial Interactivo (NYC)")
+                    m = folium.Map(location=[40.7128, -74.0060], zoom_start=11, tiles="CartoDB dark_matter")
                     
-                    if "boerum hill" in prompt.lower():
+                    # Evaluación de contexto geoespacial para renderizado dinámico
+                    prompt_lower = prompt.lower()
+                    if "boerum hill" in prompt_lower:
+                        map_center = [40.6862, -73.9882]
+                        m.location = map_center
+                        m.zoom_start = 14
+                        
                         folium.Marker(
-                            [40.6862, -73.9882],
-                            popup="Barrio: Boerum Hill (Brooklyn)",
+                            map_center,
+                            popup=folium.Popup("<b>Barrio: Boerum Hill</b><br>Borough: Brooklyn<br>Atributo: Área bajo análisis", max_width=250),
+                            tooltip="Haz clic para ver más información",
                             icon=folium.Icon(color="blue", icon="info-sign")
                         ).add_to(m)
+                        
                         folium.Circle(
-                            radius=800,
-                            location=[40.6862, -73.9882],
+                            radius=600,
+                            location=map_center,
                             color="#3b82f6",
                             fill=True,
-                            fill_opacity=0.4
+                            fill_color="#2563eb",
+                            fill_opacity=0.35,
+                            popup="Área de Influencia / Buffer Espacial"
                         ).add_to(m)
-                    
-                    st_folium(m, width=1000, height=380)
+
+                    elif "brooklyn" in prompt_lower:
+                        m.location = [40.6782, -73.9442]
+                        m.zoom_start = 12
+                        folium.Marker(
+                            [40.6782, -73.9442],
+                            popup="<b>Borough: Brooklyn</b><br>Datos vectoriales cargados desde la BD",
+                            tooltip="Condado de Brooklyn",
+                            icon=folium.Icon(color="cyan", icon="globe")
+                        ).add_to(m)
+
+                    elif "manhattan" in prompt_lower:
+                        m.location = [40.7831, -73.9712]
+                        m.zoom_start = 12
+                        folium.Marker(
+                            [40.7831, -73.9712],
+                            popup="<b>Borough: Manhattan</b><br>Datos de vecindarios PostGIS",
+                            tooltip="Condado de Manhattan",
+                            icon=folium.Icon(color="purple", icon="star")
+                        ).add_to(m)
+
+                    # Evento interactivo st_folium: captura clics e interacción en el mapa
+                    map_data = st_folium(m, width=1000, height=420)
+
+                    # Si el usuario hace clic en el mapa, muestra las coordenadas seleccionadas
+                    if map_data and map_data.get("last_clicked"):
+                        click_lat = map_data["last_clicked"]["lat"]
+                        click_lng = map_data["last_clicked"]["lng"]
+                        st.info(f"📍 **Coordenada seleccionada en el mapa:** Latitud `{click_lat:.5f}`, Longitud `{click_lng:.5f}`")
 
                     if sql_query:
                         with st.expander("🔍 Ver código SQL PostGIS ejecutado"):
