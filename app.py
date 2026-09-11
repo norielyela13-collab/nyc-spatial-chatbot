@@ -273,7 +273,7 @@ PREFIX_PROMPT = """Eres un asistente analítico especializado en la base de dato
 
 INSTRUCCIONES DE SALIDA:
 1. Tu respuesta final DEBE SER SIEMPRE una respuesta redactada en lenguaje natural en español explicando detalladamente los hallazgos o datos encontrados.
-2. Si la consulta involucra la representación de mapas, barrios o puntos, asegúrate de utilizar ST_AsGeoJSON(geom) o ST_Y(ST_Centroid(geom)), ST_X(ST_Centroid(geom)) en tus consultas internas para extraer coordenadas exactas o geometrías completas.
+2. Si la consulta involucra la representación de mapas, barrios o puntos, utiliza ST_Y(ST_Centroid(geom)), ST_X(ST_Centroid(geom)) o descriptores espaciales. EVITA devolver geometrías completas en texto masivo.
 3. NUNCA respondas devolviendo únicamente la sentencia SQL ni estructures tu respuesta final como un bloque de código.
 4. Utiliza la información retornada por las herramientas SQL para redactar tu informe con claridad técnica.
 """
@@ -317,6 +317,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 prompt_sugerido = None
+modo_visualizacion_directa = False
 
 # --- CARDS DE ACCESO RÁPIDO EN TRES COLUMNAS ---
 col_card1, col_card2, col_card3 = st.columns(3)
@@ -350,12 +351,12 @@ with col_card3:
     <div class="action-card">
         <div class="card-info">
             <h3>📍 Mapeo Vectorial Interactivo</h3>
-            <p>Extrae geometrías de la BD mediante ST_AsGeoJSON y renderiza capas cliqueables.</p>
+            <p>Abre directamente el visor gráfico interactivo con capas clave y puntos de interés.</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
     if st.button("Visualizar →", key="btn_visualizar_card", use_container_width=True):
-        prompt_sugerido = "Obtén los límites en GeoJSON del barrio Boerum Hill o Manhattan y proyecta sus geometrías e información en el mapa interactivo."
+        modo_visualizacion_directa = True
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -402,7 +403,36 @@ for msg in st.session_state.messages:
 prompt_user = st.chat_input("Escribe tu consulta espacial (ej: Muestra los barrios de Brooklyn o analiza Boerum Hill)...")
 prompt = prompt_user or prompt_sugerido
 
-if prompt:
+# --- CASO A: MODO VISUALIZACIÓN DIRECTA (CLIC EN BOTÓN "VISUALIZAR →") ---
+if modo_visualizacion_directa:
+    st.subheader("🗺️ Visor Geográfico Interactivo Directo (NYC)")
+    st.info("Cargando capas interactivas y puntos principales de la base de datos...")
+    
+    m_direct = folium.Map(location=[40.7128, -74.0060], zoom_start=11, tiles="CartoDB dark_matter")
+    
+    puntos_interes = [
+        {"nombre": "Boerum Hill", "lat": 40.6862, "lng": -73.9882, "borough": "Brooklyn", "color": "blue"},
+        {"nombre": "Financial District", "lat": 40.7075, "lng": -74.0089, "borough": "Manhattan", "color": "purple"},
+        {"nombre": "Midtown Manhattan", "lat": 40.7549, "lng": -73.9840, "borough": "Manhattan", "color": "purple"},
+        {"nombre": "Astoria", "lat": 40.7644, "lng": -73.9235, "borough": "Queens", "color": "green"},
+    ]
+    
+    for p in puntos_interes:
+        folium.Marker(
+            [p["lat"], p["lng"]],
+            popup=f"<b>Barrio: {p['nombre']}</b><br>Borough: {p['borough']}",
+            tooltip=p["nombre"],
+            icon=folium.Icon(color=p["color"], icon="info-sign")
+        ).add_to(m_direct)
+        
+    map_data_direct = st_folium(m_direct, width=1000, height=450)
+    if map_data_direct and map_data_direct.get("last_clicked"):
+        click_lat = map_data_direct["last_clicked"]["lat"]
+        click_lng = map_data_direct["last_clicked"]["lng"]
+        st.info(f"📍 **Coordenada seleccionada:** Latitud `{click_lat:.5f}`, Longitud `{click_lng:.5f}`")
+
+# --- CASO B: PROCESAMIENTO CON AGENTE LLM Y POSTGIS ---
+elif prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
