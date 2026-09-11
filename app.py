@@ -18,7 +18,6 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
     
-    /* ANIMACIÓN DE ONDA AJUSTADA AL NUEVO TAMAÑO DE RETÍCULA (48px * 2 = 96px) */
     @keyframes move-background {
         0% { background-position: 0 0; }
         100% { background-position: 96px 96px; }
@@ -36,14 +35,27 @@ st.markdown("""
         100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
     }
 
-    /* FONDO OSCURO CON CÍRCULOS Y ESPACIADO MÁS GRANDES */
+    /* CONTENEDOR PRINCIPAL CON FONDO BASE SOLIDIFICADO */
     .stApp {
         background-color: #0b0f19 !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        color: #f1f5f9 !important;
+        position: relative;
+    }
+
+    /* CAPA DE CÍRCULOS ANIMADOS DE TRÁS DE TODO EL CONTENIDO */
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
         background-image: radial-gradient(rgba(59, 130, 246, 0.45) 3.5px, transparent 3.5px) !important;
         background-size: 48px 48px !important;
         animation: move-background 10s linear infinite !important;
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
-        color: #f1f5f9 !important;
+        z-index: -1;
+        pointer-events: none;
     }
 
     .main .block-container {
@@ -89,7 +101,13 @@ st.markdown("""
         color: #60a5fa !important;
     }
 
-    /* FIX CHAT INPUT Y MASCARILLA INFERIOR */
+    /* BLOQUE INFERIOR OPACO PARA TAPAR CÍRCULOS BAJO EL INPUT */
+    div[data-testid="stBottomBlockContainer"] {
+        background-color: #0b0f19 !important;
+        border-top: 1px solid #1e293b !important;
+        padding-bottom: 10px !important;
+    }
+
     div[data-testid="stChatInput"] {
         background-color: #111827 !important;
         border: 1px solid #3b82f6 !important;
@@ -99,10 +117,6 @@ st.markdown("""
 
     div[data-testid="stChatInput"] textarea {
         color: #f1f5f9 !important;
-        background-color: transparent !important;
-    }
-
-    div[data-testid="stBottomBlockContainer"] {
         background-color: transparent !important;
     }
 
@@ -462,7 +476,7 @@ if prompt:
                             icon=folium.Icon(color="blue", icon="info-sign")
                         ).add_to(m)
                         folium.Circle(
-                            radius=800,  # AUMENTADO DE 400 A 800 METROS
+                            radius=800,
                             location=[40.6862, -73.9882],
                             color="#3b82f6",
                             fill=True,
